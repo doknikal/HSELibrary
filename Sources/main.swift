@@ -1,7 +1,6 @@
 // HSE Library — native menubar proxy client (no scripts).
 // Swift + Network.framework; credentials live in Keychain only.
 import Cocoa
-import CoreImage
 import Network
 import Security
 
@@ -607,24 +606,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var proxyMenuItem: NSMenuItem!
     private var infoMenuItem: NSMenuItem!
     private var loginMenuItem: NSMenuItem!
-    private var coloredIcon: NSImage?
-    private var grayIcon: NSImage?
-
-    private func buildIcons() {
-        guard let path = Bundle.main.path(forResource: "AppIcon", ofType: "icns"),
-              let img = NSImage(contentsOfFile: path) else { return }
-        img.size = NSSize(width: 18, height: 18)
-        coloredIcon = img
-        if let tiff = img.tiffRepresentation, let ci = CIImage(data: tiff) {
-            let mono = CIFilter(name: "CIColorMonochrome")
-            mono?.setValue(ci, forKey: kCIInputImageKey)
-            mono?.setValue(CIColor(red: 0.55, green: 0.55, blue: 0.55), forKey: "inputColor")
-            mono?.setValue(1.0, forKey: "inputIntensity")
-            if let out = mono?.outputImage, let cg = CIContext().createCGImage(out, from: out.extent) {
-                grayIcon = NSImage(cgImage: cg, size: NSSize(width: 18, height: 18))
-            }
-        }
-    }
 
     var proxyOn: Bool {
         get { enabled }
@@ -636,9 +617,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        buildIcons()
-        statusItem.button?.image = grayIcon ?? coloredIcon
-        if statusItem.button?.image == nil { statusItem.button?.title = "HSE" }
+        if let path = Bundle.main.path(forResource: "AppIcon", ofType: "icns"),
+           let img = NSImage(contentsOfFile: path) {
+            img.size = NSSize(width: 18, height: 18)
+            statusItem.button?.image = img
+        } else {
+            statusItem.button?.title = "HSE"
+        }
         let menu = NSMenu()
         menu.delegate = self
         // importance order: proxy toggle first, sign-in below
@@ -691,7 +676,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateMenuTitles() {
         let relayRunning = Relay.shared.isRunning
         proxyMenuItem.title = relayRunning ? "Disable proxy" : "Enable proxy"
-        statusItem?.button?.image = relayRunning ? coloredIcon : grayIcon
+        statusItem?.button?.alphaValue = relayRunning ? 1.0 : 0.35
         let login = Keychain.read()?.account
         let loginPart = login.map { "\($0)" } ?? "not signed in"
         infoMenuItem.title = "Proxy: \(relayRunning ? "on" : "off") · Resources: \(domains.count) · Login: \(loginPart)"
