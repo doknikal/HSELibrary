@@ -35,3 +35,22 @@ xattr -dr com.apple.quarantine "/Applications/HSE Library.app"
 ## Требования
 
 macOS 13 и новее · Intel и Apple Silicon.
+
+## Решение для macOS 27+ (PAC не применяется системой)
+
+В macOS 27.2.1 системный механизм PAC (Proxies → Auto Proxy) игнорируется —
+Safari ходит мимо прокси. Обход: локальный релея-прокси `scripts/hse-relay.py`
+(слушает 127.0.0.1:18080, как manual-прокси), который сам реализует логику
+whitelist из PAC: домены ВШЭ -> через libtest.hse.ru:3128 с авторизацией из
+Связки ключей, остальное -> напрямую. Установка:
+
+```bash
+mkdir -p "$HOME/Library/Application Support/HSE Library"
+cp scripts/hse-relay.py "$HOME/Library/Application Support/HSE Library/"
+cp scripts/ru.hse.library.relay.plist "$HOME/Library/LaunchAgents/"  # см. ниже
+launchctl load "$HOME/Library/LaunchAgents/ru.hse.library.relay.plist"
+networksetup -setautoproxystate Wi-Fi off
+networksetup -setwebproxy Wi-Fi 127.0.0.1 18080
+
+networksetup -setsecurewebproxy Wi-Fi 127.0.0.1 18080
+```
