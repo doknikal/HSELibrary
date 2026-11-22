@@ -47,7 +47,8 @@ whitelist из PAC: домены ВШЭ -> через libtest.hse.ru:3128 с а�
 ```bash
 mkdir -p "$HOME/Library/Application Support/HSE Library"
 cp scripts/hse-relay.py "$HOME/Library/Application Support/HSE Library/"
-cp scripts/ru.hse.library.relay.plist "$HOME/Library/LaunchAgents/"  # см. ниже
+# LaunchAgent: создайте ~/Library/LaunchAgents/ru.hse.library.relay.plist
+# (ProgramArguments: /usr/bin/python3 + путь к hse-relay.py, RunAtLoad, KeepAlive)
 launchctl load "$HOME/Library/LaunchAgents/ru.hse.library.relay.plist"
 networksetup -setautoproxystate Wi-Fi off
 networksetup -setwebproxy Wi-Fi 127.0.0.1 18080
