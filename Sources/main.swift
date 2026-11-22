@@ -557,7 +557,7 @@ enum ListFetcher {
 final class AccessTester: NSObject, URLSessionDataDelegate {
     var retained: AnyObject?
     func test(completion: @escaping (String) -> Void) {
-        guard let cred = Keychain.read() else { completion("Нет сохраненного логина. Войдите через меню."); return }
+        guard let cred = Keychain.read() else { completion("No saved login. Sign in from the menu first."); return }
         let config = URLSessionConfiguration.ephemeral
         config.connectionProxyDictionary = [
             "HTTPEnable": 1,
@@ -570,12 +570,12 @@ final class AccessTester: NSObject, URLSessionDataDelegate {
         let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
         retained = session
         let task = session.dataTask(with: Cfg.testURL) { _, resp, error in
-            if let error { completion("Сервер не отвечает: \(error.localizedDescription)"); return }
+            if let error { completion("Server unreachable: \(error.localizedDescription)"); return }
             let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
             switch code {
-            case 200...399: completion("Пользуйтесь ресурсами ВШЭ!")
-            case 407: completion("Логин или пароль неверны (407).")
-            default: completion("Ошибка: HTTP \(code)")
+            case 200...399: completion("Enjoy your HSE library access!")
+            case 407: completion("Wrong login or password (407).")
+            default: completion("Error: HTTP \(code)")
             }
         }
         task.resume()
@@ -622,32 +622,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             img.size = NSSize(width: 16, height: 16)
             statusItem.button?.image = img
         } else {
-            statusItem.button?.title = "ВШЭ"
+            statusItem.button?.title = "HSE"
         }
         let menu = NSMenu()
         menu.delegate = self
         infoMenuItem = NSMenuItem(title: "…", action: nil, keyEquivalent: "")
         infoMenuItem.isEnabled = false
         menu.addItem(infoMenuItem)
-        loginMenuItem = NSMenuItem(title: "Войти (логин ВШЭ)…", action: #selector(loginAction), keyEquivalent: "")
+        loginMenuItem = NSMenuItem(title: "Sign in (HSE login)…", action: #selector(loginAction), keyEquivalent: "")
         loginMenuItem.target = self
         menu.addItem(loginMenuItem)
         menu.addItem(.separator())
-        proxyMenuItem = NSMenuItem(title: "Включить прокси", action: #selector(toggleProxy), keyEquivalent: "")
+        proxyMenuItem = NSMenuItem(title: "Enable proxy", action: #selector(toggleProxy), keyEquivalent: "")
         proxyMenuItem.target = self
         menu.addItem(proxyMenuItem)
-        let testItem = NSMenuItem(title: "Проверить доступ", action: #selector(testAccess), keyEquivalent: "")
+        let testItem = NSMenuItem(title: "Test access", action: #selector(testAccess), keyEquivalent: "")
         testItem.target = self
         menu.addItem(testItem)
-        let updateItem = NSMenuItem(title: "Обновить список ресурсов", action: #selector(refreshList), keyEquivalent: "")
+        let updateItem = NSMenuItem(title: "Refresh resource list", action: #selector(refreshList), keyEquivalent: "")
         updateItem.target = self
         menu.addItem(updateItem)
         menu.addItem(.separator())
-        let openItem = NSMenuItem(title: "Ведомости (архив ИВИС)", action: #selector(openNews), keyEquivalent: "")
+        let openItem = NSMenuItem(title: "Vedomosti (IVIS archive)", action: #selector(openNews), keyEquivalent: "")
         openItem.target = self
         menu.addItem(openItem)
         menu.addItem(.separator())
-        let quitItem = NSMenuItem(title: "Завершить (прокси выключится)", action: #selector(quitAction), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Quit (disables proxy)", action: #selector(quitAction), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
         statusItem.menu = menu
@@ -674,11 +674,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateMenuTitles() {
         let relayRunning = Relay.shared.isRunning
-        proxyMenuItem.title = relayRunning ? "Выключить прокси" : "Включить прокси"
+        proxyMenuItem.title = relayRunning ? "Disable proxy" : "Enable proxy"
         let login = Keychain.read()?.account
-        let loginPart = login.map { "«\($0)»" } ?? "не выполнен"
-        infoMenuItem.title = "Прокси: \(relayRunning ? "включен" : "выключен") · Ресурсов: \(domains.count) · Вход: \(loginPart)"
-        loginMenuItem.title = (Keychain.read() == nil) ? "Войти (логин ВШЭ)…" : "Сменить логин ВШЭ…"
+        let loginPart = login.map { "\($0)" } ?? "not signed in"
+        infoMenuItem.title = "Proxy: \(relayRunning ? "on" : "off") · Resources: \(domains.count) · Login: \(loginPart)"
+        loginMenuItem.title = (Keychain.read() == nil) ? "Sign in (HSE login)…" : "Change HSE login…"
     }
 
     private func enable() {
@@ -711,18 +711,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func loginAction() {
         let alert = NSAlert()
-        alert.messageText = "Вход в библиотеку ВШЭ"
-        alert.informativeText = "Логин и пароль сохраняются только в Связке ключей macOS."
-        alert.addButton(withTitle: "Сохранить")
-        alert.addButton(withTitle: "Отмена")
+        alert.messageText = "HSE Library sign-in"
+        alert.informativeText = "Your login and password are stored only in the macOS Keychain."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
         let box = NSStackView()
         box.orientation = .vertical
         box.spacing = 8
         let loginField = NSTextField()
-        loginField.placeholderString = "Логин ВШЭ (например, ivanov@edu.hse.ru)"
+        loginField.placeholderString = "HSE login (e.g. ivanov@edu.hse.ru)"
         if let cur = Keychain.read() { loginField.stringValue = cur.account }
         let passField = NSSecureTextField()
-        passField.placeholderString = "Пароль"
+        passField.placeholderString = "Password"
         box.addArrangedSubview(loginField)
         box.addArrangedSubview(passField)
         alert.accessoryView = box

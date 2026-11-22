@@ -57,3 +57,8 @@ codesign --force -s - "HSE Library.app"
 ## Требования
 
 macOS 13+ · Intel и Apple Silicon.
+
+## License
+
+[MIT](LICENSE) — свободное использование, изменение и распространение.
+
