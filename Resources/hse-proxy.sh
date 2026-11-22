@@ -147,8 +147,8 @@ cmd_check() {
   host="${host#http://}"; host="${host#https://}"; host="${host%%/*}"
   valid_host "$host" || die "Недопустимое имя хоста: $host"
 
-  local routed="нет"
-  if [ -f "$HSE_PAC_PATH" ] && grep -Eq "\"$host\"|\.${host#*.}" "$HSE_PAC_PATH" 2>/dev/null; then
+  local routed="нет" base="${host#www.}"
+  if [ -f "$HSE_PAC_PATH" ] && grep -Eq "\"(${host}|${base})\"" "$HSE_PAC_PATH" 2>/dev/null; then
     routed="да"
   fi
 
