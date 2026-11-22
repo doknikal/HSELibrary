@@ -1,6 +1,7 @@
 // HSE Library — native menubar proxy client (no scripts).
 // Swift + Network.framework; credentials live in Keychain only.
 import Cocoa
+import CoreImage
 import Network
 import Security
 
@@ -606,6 +607,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var proxyMenuItem: NSMenuItem!
     private var infoMenuItem: NSMenuItem!
     private var loginMenuItem: NSMenuItem!
+    private var coloredIcon: NSImage?
+    private var grayIcon: NSImage?
+
+    private func buildIcons() {
+        guard let path = Bundle.main.path(forResource: "AppIcon", ofType: "icns"),
+              let img = NSImage(contentsOfFile: path) else { return }
+        img.size = NSSize(width: 18, height: 18)
+        coloredIcon = img
+        if let tiff = img.tiffRepresentation, let ci = CIImage(data: tiff) {
+            let mono = CIFilter(name: "CIColorMonochrome")
+            mono?.setValue(ci, forKey: kCIInputImageKey)
+            mono?.setValue(CIColor(red: 0.55, green: 0.55, blue: 0.55), forKey: "inputColor")
+            mono?.setValue(1.0, forKey: "inputIntensity")
+            if let out = mono?.outputImage, let cg = CIContext().createCGImage(out, from: out.extent) {
+                grayIcon = NSImage(cgImage: cg, size: NSSize(width: 18, height: 18))
+            }
+        }
+    }
 
     var proxyOn: Bool {
         get { enabled }
@@ -617,28 +636,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let path = Bundle.main.path(forResource: "AppIcon", ofType: "icns"),
-           let img = NSImage(contentsOfFile: path) {
-            img.size = NSSize(width: 16, height: 16)
-            statusItem.button?.image = img
-        } else {
-            statusItem.button?.title = "HSE"
-        }
+        buildIcons()
+        statusItem.button?.image = grayIcon ?? coloredIcon
+        if statusItem.button?.image == nil { statusItem.button?.title = "HSE" }
         let menu = NSMenu()
         menu.delegate = self
-        infoMenuItem = NSMenuItem(title: "…", action: nil, keyEquivalent: "")
-        infoMenuItem.isEnabled = false
-        menu.addItem(infoMenuItem)
-        loginMenuItem = NSMenuItem(title: "Sign in (HSE login)…", action: #selector(loginAction), keyEquivalent: "")
-        loginMenuItem.target = self
-        menu.addItem(loginMenuItem)
-        menu.addItem(.separator())
+        // importance order: proxy toggle first, sign-in below
         proxyMenuItem = NSMenuItem(title: "Enable proxy", action: #selector(toggleProxy), keyEquivalent: "")
         proxyMenuItem.target = self
         menu.addItem(proxyMenuItem)
+        menu.addItem(.separator())
+        infoMenuItem = NSMenuItem(title: "…", action: nil, keyEquivalent: "")
+        infoMenuItem.isEnabled = false
+        menu.addItem(infoMenuItem)
         let testItem = NSMenuItem(title: "Test access", action: #selector(testAccess), keyEquivalent: "")
         testItem.target = self
         menu.addItem(testItem)
+        loginMenuItem = NSMenuItem(title: "Sign in (HSE login)…", action: #selector(loginAction), keyEquivalent: "")
+        loginMenuItem.target = self
+        menu.addItem(loginMenuItem)
         let updateItem = NSMenuItem(title: "Refresh resource list", action: #selector(refreshList), keyEquivalent: "")
         updateItem.target = self
         menu.addItem(updateItem)
@@ -675,6 +691,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateMenuTitles() {
         let relayRunning = Relay.shared.isRunning
         proxyMenuItem.title = relayRunning ? "Disable proxy" : "Enable proxy"
+        statusItem?.button?.image = relayRunning ? coloredIcon : grayIcon
         let login = Keychain.read()?.account
         let loginPart = login.map { "\($0)" } ?? "not signed in"
         infoMenuItem.title = "Proxy: \(relayRunning ? "on" : "off") · Resources: \(domains.count) · Login: \(loginPart)"
@@ -769,8 +786,10 @@ extension AppDelegate: NSMenuDelegate {
 
 // MARK: - Bootstrap
 
+private var retainedDelegate: AppDelegate!
+
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
-let delegate = AppDelegate()
-app.delegate = delegate
+retainedDelegate = AppDelegate()
+app.delegate = retainedDelegate
 app.run()
